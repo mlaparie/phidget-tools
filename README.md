@@ -139,7 +139,7 @@ echo 0 > $TMPFILE
 	done
 ```
 
-```txt
+```bash
 $ sh cycle-rec.sh 6 0.0001157407 -nDoe -r0.2 -yd0.0001157407
 Initiated a cycle of 6 phases each separated by 0.0001157407 days…
 Phase 1/6 over.
@@ -160,6 +160,23 @@ Data/
     └── Doe_phase6of6_r0.2_D0.0d_20211108-133722.csv
 
 1 directory, 6 files
+
+$ head Data/Doe/Doe_phase1of6_r0.2_D0.0d_20211108-133540.csv -n 14
+"Hostname: xiaomimi-solus"
+"Phidget: 647540"
+"Name: Doe"
+"Tag(s) or info: NA"
+"Label: phase1of6"
+"Poll rate: 0.2s"
+"Program initialization: 2021-11-08 13:35:40"
+"Scheduled to record until: 2021-11-08 13:35:49.999996"
+"chan0 to chan3: K-type thermocouples"
+"chan4: internal temperature"
+
+"time","chan0","chan1","chan2","chan3","chan4"
+"2021-11-08 13:35:40.402383","24.8175","24.945","25.0146","25.178","26.66"
+"2021-11-08 13:35:40.602828","24.83","24.94","25.0146","25.178","26.66"
+…
 ```
 
 This example does stupidly short cycles for test purposes, but similar routines could get useful over longer durations. *e.g.*, if you are only interested in night temperatures.
