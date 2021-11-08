@@ -146,7 +146,7 @@ tree Data -tU | head -n "$lastmod"
 ```
 
 ```bash
-sh cycle-rec.sh 6 0.0006944444 -nDoe -r0.2 -yd0.0001157407 -p647540
+$ sh cycle-rec.sh 6 0.0006944444 -nDoe -r0.2 -yd0.0001157407 -p647540
 Initiated a cycle of 6 recording phases each separated by 0.0006944444 days…
 Recording 1/6 completed.
 Recording 2/6 completed.
