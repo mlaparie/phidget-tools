@@ -1,5 +1,5 @@
 # phidget-tools
-__*Easy recording/monitoring of Phidget 1048_1B USB-thermocouple devices directly from your comfy terminal*__
+__*Easy recording/monitoring from Phidget 1048_1B USB-thermocouple devices directly from your comfy terminal*__
 
 It aims at providing a fast, flexible and efficient way to record and monitor thermocouple data in situations where a computer (including a tiny and inexpensive one like the Pi Zero) is in reach. This saves the usual hassle of using GUI and/or proprietary software with limited features from commercial providers, having to set recording missions without live feedback, and then unload and view the data only when the experiment is over.
 
@@ -108,7 +108,7 @@ ln -s phidget-plot ~/.local/bin/phidget-plot
 ### How to use
 Using both scripts should be straightforward, check `--help`. In short, plug your Phidget device, run `phidget-rec` (try the `--interactive` ot `-i`  option if in doubt) to collect data, and run `phidget-plot` to select and preview previously recorded data or view live plots for ongoing monitorings. Make sure your Phidget has thermocouples connected on all four TC channels (0 to 3) because errors may arise if some channels cannot collect data.
 
-While `phidget -i` will prompt the user for all available options (except selecting the Phidget device when several are connected, because I could not test it, but using the `-p SERIAL` argument should work), one advantage for CLI tools is to suppress all interactions so they can be executed from other scripts and tools. Just make sure you provide the compulsory arguments `-n NAME`, `-d DAYS` (durations shorter than one day are possible, though inconvenient to calculate: `-d 0.25` is sixt hours) and `-y` to skip the final confirmation. `-r RATE` is not mandatory but will obviously be set by many users. For instance, the script below would collect data for 10 seconds at 0.2s poll rate, then wait 10 seconds before starting a new cycle, and increment file names accordingly.
+While `phidget -i` will prompt the user for all available options (except selecting a Phidget when several are connected, because I could not test it, but adding `-p SERIAL` should work), one advantage for CLI tools is to suppress all interactions to run them from other scripts and tools. Just make sure you provide the compulsory arguments `-n NAME`, `-d DAYS` (though inconvenient, it is a float, so fractions are possible: `-d 0.25` is six hours) and `-y` to skip the final confirmation. `-r RATE` is not mandatory but will obviously be set by most users. The silly example below would collect data for 10 seconds at 0.2s poll rate, then wait 10 seconds before starting a new cycle, and increment file names accordingly.
 
 ```bash
 #!/usr/bin/env bash
