@@ -1,0 +1,481 @@
+#!/usr/bin/python3
+#
+# phidget-rec and phidget-plot aim to facilitate recording and monitoring
+# of data from Phidget 1048_1B USB-thermocouple devices directly from your
+# comfy terminal.
+# 
+# Copyright (C) 2021 Mathieu Laparie
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+from datetime import datetime, timedelta
+from Phidget22.Phidget import *
+from Phidget22.Devices.TemperatureSensor import *
+from optparse import OptionParser
+import time
+import progressbar
+
+import time
+import signal
+import sys
+import os
+import csv
+import socket
+
+# Help and options
+parser = OptionParser(
+    usage="usage: $ %prog [options]",
+    description="A program to facilitate recording and monitoring of data from Phidget 1048_1B USB-thermocouple devices directly from your comfy terminal",
+    epilog="phidget-rec comes with no warranty. This is free software, you are welcome to redistribute it under GPLv3 conditions. Copyright (C) 2021 M. Laparie. Improve me at https://github.com/mlaparie/phidget-tools",
+)
+parser.add_option(
+    "-i",
+    "--interactive",
+    dest="interactive",
+    action="store_true",
+    help="Enable interactive input prompts for all options",
+)
+parser.add_option(
+    "-m",
+    "--mode",
+    dest="mode",
+    action="store",
+    help="[d]uration, scheduled end [t]ime, or [c]ontinuous until manually stopped, default=%default",
+    default="d",
+)
+parser.add_option(
+    "-r",
+    "--rate",
+    dest="rate",
+    action="store",
+    type="float",
+    help="Poll rate in seconds (min 0.1), default=%default",
+    default="1",
+)
+parser.add_option(
+    "-n",
+    "--name",
+    dest="name",
+    action="store",
+    help="Your name; will be prefixed to the output file name to facilitate sorting data on shared computers",
+    default=None,
+)
+parser.add_option(
+    "-l",
+    "--label",
+    dest="label",
+    action="store",
+    help="Label (experiment, species, etc.) to include in the csv file name, default=Phidget S/N",
+)
+parser.add_option(
+    "-t",
+    "--tag",
+    dest="tag",
+    action="store",
+    help="Add any relevant tags (keywords, etc.) or summary information to the csv description; use quotes in case of multiple words",
+    default=None,
+)
+parser.add_option(
+    "-s",
+    "--sep",
+    dest="sep",
+    action="store",
+    help="Column separator, either [c]omma, [t]ab, or [s]pace, default=%default",
+    default="c",
+)
+parser.add_option(
+    "-f",
+    "--file",
+    dest="filename",
+    action="store",
+    help="Custom output file name (ignores --name and --label), default=NAME_LABEL_RRATE_MODEDURATION_DATETIME.csv",
+)
+parser.add_option(
+    "-p",
+    "--phidget",
+    dest="phidget",
+    action="store",
+    type="int",
+    help="6-digit serial number of the Phidget to use, if multiple Phidgets 1048_1B are connected",
+    default=None,
+)
+parser.add_option(
+    "-d",
+    "--days",
+    dest="days",
+    action="store",
+    type="float",
+    help="Number of days to record, meant for use in combination with duration mode in a non-interactive and therefore easily programmable way",
+)
+parser.add_option(
+    "-y",
+    "--yes",
+    action="store_true",
+    help="Skip confirmation prompt before recording data, meant to allow suppressing all interactive prompts when options are set in command line to facilitate the automatic execution of the program",
+    dest="yes",
+    default=False,
+)
+parser.add_option(
+    "-q",
+    "--quiet",
+    action="store_true",
+    help="Hide sensor readings while recording",
+    dest="verbose",
+    default=False,
+)
+(options, args) = parser.parse_args()
+
+# Check device connection
+device = TemperatureSensor()
+try:
+    if options.phidget is not None:
+        print("Querying Phidget S/N " + str(options.phidget) + "… ")
+        device.setDeviceSerialNumber(options.phidget)
+        device.openWaitForAttachment(5000)
+        serialnumber = device.getDeviceSerialNumber()
+    else:
+        print("Looking for compatible devices… ")
+        device.openWaitForAttachment(5000)
+        serialnumber = device.getDeviceSerialNumber()
+    print(f"\033[32;1m✔\033[0m Phidget S/N " + format(serialnumber) + " detected.\n")
+except Exception as e:
+    sys.exit(
+        "\033[31;1m✗\033[0m Phidget not detected, check USB connection or queried serial number."
+    )
+device.close()
+
+# Interactive prompts
+init_full = datetime.now()
+init = init_full.strftime("%Y%m%d-%H%M%S")
+
+if options.interactive is not None:
+    options.name = str(input("1/8. Type your lastname: ") or "Doe")
+    options.mode = str(
+        input(
+            "2/8. Mode ([d]uration (default), scheduled end [t]ime, or [c]ontinuous until manually stopped): "
+        )
+        or "d"
+    )
+elif options.name is None:
+    options.name = str(input("Type your lastname: ") or "Doe")
+
+if options.mode == "d" and options.days is None:
+    y = int(
+        input(
+            f"\033[32;1m     > [D]uration mode\033[0m\n       Input years (default: 0): "
+        )
+        or "0"
+    )
+    d = int(input("       Input days (default: 0): ") or "0")
+    h = int(input("       Input hours (default: 0): ") or "0")
+    m = int(input("       Input minutes (default: 0): ") or "0")
+    s = int(input("       Input seconds (default: 0): ") or "0")
+    total = y * 365 * 24 * 3600 + d * 24 * 3600 + h * 3600 + m * 60 + s
+    now = datetime.now().replace(microsecond=0)
+    end = now + timedelta(seconds=total)
+    print(
+        "     > Scheduled to end in ",
+        "\033[32;1m",
+        y,
+        "y ",
+        d,
+        "d ",
+        h,
+        "h ",
+        m,
+        "m ",
+        s,
+        "s",
+        "\033[0m",
+        ", i.e., ",
+        "\033[32;1m",
+        end,
+        "\033[0m",
+        sep="",
+    )
+elif options.mode == "d" and options.days is not None:
+    total = options.days * 86400
+    now = datetime.now().replace(microsecond=0)
+    end = now + timedelta(seconds=total)
+    print(
+        "\033[32;1m     > [D]uration mode\033[0m\n     > Scheduled to end in ",
+        "\033[32;1m",
+        options.days,
+        "\033[0m day(s)",
+        ", i.e., ",
+        "\033[32;1m",
+        end,
+        "\033[0m",
+        sep="",
+    )
+elif options.mode == "t":
+    year = int(
+        input(
+            f"\033[32;1m     > End [t]ime mode\033[0m\n       Input the end year (default: "
+            + str(datetime.now().year)
+            + "): "
+        )
+        or datetime.now().year
+    )
+    month = int(
+        input(
+            "       Input the end month (default: " + str(datetime.now().month) + "): "
+        )
+        or datetime.now().month
+    )
+    day = int(
+        input("       Input the end day (default: " + str(datetime.now().day) + "): ")
+        or datetime.now().day
+    )
+    hour = int(
+        input("       Input the end hour (default: " + str(datetime.now().hour) + "): ")
+        or datetime.now().hour
+    )
+    minute = int(
+        input(
+            "       Input the end minute (default: "
+            + str(datetime.now().minute)
+            + "): "
+        )
+        or datetime.now().minute
+    )
+    second = int(0)
+    end = datetime(year, month, day, hour, minute, second)
+    now = datetime.now()
+    duration = end - now
+    total = duration.total_seconds()
+    print(f"     > Scheduled to end on ", "\033[32;1m", end, "\033[0m", sep="")
+else:
+    total = float("inf")
+    end = str("the program is manually stopped (Ctrl+c)")
+    print("\033[32;1m     > [C]ontinuous mode\033[0m\n     > No scheduled end, you will have to stop the program manually.")
+
+if options.interactive is not None and total is not None:
+    options.rate = float(input("3/8. Poll rate in seconds (default: 1): ") or 1)
+    options.label = str(
+        input(
+            "4/8. Label or keyword to use add to the csv file name (default: sn"
+            + str(serialnumber)
+            + "): "
+        )
+        or "sn" + str(serialnumber)
+    )
+    options.tag = str(
+        input(
+            "5/8. Add any tags (species, keywords, etc.) or information to the csv description (default: none): "
+        )
+        or ""
+    )
+    options.sep = str(
+        input("6/8. Column separator ([c]omma (default), [t]ab, or [s]pace): ") or "c"
+    )
+    options.filename = str(
+        input(
+            "7/8. File name (default: "
+            + str(options.name)
+            + "_"
+            + str(options.label)
+            + "_R"
+            + str(options.rate)
+            + "_"
+            + str(options.mode.upper())
+            + str(round(total / 86400, 1))
+            + "d_"
+            + str(init)
+            + ".csv): "
+        )
+        or (
+            str(options.name)
+            + "_"
+            + str(options.label)
+            + "_R"
+            + str(options.rate)
+            + "_"
+            + str(options.mode.upper())
+            + str(round(total / 86400, 1))
+            + "d_"
+            + str(init)
+            + ".csv"
+        )
+    )
+
+    def ask_quiet():
+        options.verbose = str(
+            input("8/8. Print data below while recording ([y]es (default) or [n]o)? ")
+            or "y"
+        )
+        if options.verbose == "y" or options.verbose == "yes":
+            return False
+        elif options.verbose == "n" or options.verbose == "no":
+            return True
+
+    options.verbose = ask_quiet()
+
+# Handle other options after interactive mode or if interactive mode was not used
+if options.label is not None:
+    label = options.label
+else:
+    label = str("sn" + str(serialnumber))
+
+if options.name is not None:
+    name = str(options.name)
+else:
+    name = str("Doe")
+
+if options.tag is not None:
+    tag = str(options.tag)
+else:
+    tag = str("NA")
+
+sep = {"t": "\t", "c": ",", "s": " "}.get(options.sep, None)
+
+if options.filename is not None:
+    filename = options.filename
+else:
+    filename = (
+        str(name)
+        + "_"
+        + str(options.label)
+        + "_r"
+        + str(options.rate)
+        + "_"
+        + str(options.mode.upper())
+        + str(round(total / 86400, 1))
+        + "d_"
+        + str(init)
+        + ".csv"
+    )
+
+path = os.path.join(os.getcwd(), "Data", name)
+full_path = path + os.sep + filename
+
+# Data file template
+hostname = socket.gethostname()
+
+description = [
+    ["Hostname: " + str(hostname)],
+    ["Phidget: " + str(serialnumber)],
+    ["Name: " + str(name)],
+    ["Tag(s) or info: " + str(tag)],
+    ["Label: " + str(label)],
+    ["Poll rate: " + str(options.rate) + "s"],
+    ["Program initialization: " + str(init_full.strftime("%Y-%m-%d %H:%M:%S"))],
+    ["Scheduled to record until: " + str(end)],
+    ["chan0 to chan3: K-type thermocouples"],
+    ["chan4: internal temperature"],
+    [],
+]
+
+headers = ["time", "chan0", "chan1", "chan2", "chan3", "chan4"]
+
+# Start/stop recording
+setup_summary = str(
+    "\033[32;1m"
+    + str(serialnumber)
+    + "\033[0m"
+    + " at "
+    + "\033[32;1m"
+    + str(options.rate)
+    + "\033[0m"
+    + "s poll rate into "
+    + "\033[32;1m"
+    + str(name)
+    + str(os.sep)
+    + str(filename)
+    + "\033[0m"
+)
+try:
+    if options.yes is not False:
+        print(
+            "\nCollecting data from Phidget S/N "
+            + str(setup_summary)
+            + ".\n\n     \033[32;1m> csv description\033[0m\n       "
+            + ("\n       ".join(" ".join(map(str, sl)) for sl in description))
+            + "\033[1m\nStarting immediately, press Ctrl+c to stop.\033[0m\n"
+        )
+    else:
+        input(
+            "\nReady to collect data from Phidget S/N "
+            + str(setup_summary)
+            + ".\n\n     \033[32;1m> csv description\033[0m\n       "
+            + ("\n       ".join(" ".join(map(str, sl)) for sl in description))
+            + "\033[1m\nPress Enter to start recording and Ctrl+c to stop.\033[0m\n"
+        )
+except KeyboardInterrupt:
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, lambda x, y: sys.exit(0))
+
+# Data collection and saving
+channels = {0: None, 1: None, 2: None, 3: None, 4: None}
+
+os.makedirs(path, exist_ok=True)
+
+
+def change(thing, value):
+    channels[thing.getChannel()] = value
+
+
+things = []
+
+with open(full_path, "w", encoding="UTF8", newline="") as f:
+    writer = csv.writer(f, delimiter=sep, quoting=csv.QUOTE_ALL)
+    for line in description:
+        writer.writerow(line)
+    writer.writerow(headers)
+    if options.verbose is True:
+        print(
+            "\033[31;1m     > Writing data into "
+            + str(f.name)
+            + "\033[0m\n       since "
+            + str(init_full.strftime("%Y-%m-%d %H:%M:%S"))
+            + " and until "
+            + str(end)
+            + "…"
+        )
+
+    else:
+        print("                      " + "\t  ".join(headers))
+
+    for channel in channels:
+        thing = TemperatureSensor()
+        thing.setDeviceSerialNumber(serialnumber)
+        thing.setChannel(channel)
+        thing.setOnTemperatureChangeHandler(change)
+        thing.openWaitForAttachment(5000)
+
+        things.append(thing)
+
+stop = time.time() + total
+while time.time() < stop:
+    data = [
+        str(datetime.now()),
+        str(channels[0]),
+        str(channels[1]),
+        str(channels[2]),
+        str(channels[3]),
+        str(channels[4]),
+    ]
+    with open(full_path, "a", encoding="UTF8", newline="") as f:
+        writer = csv.writer(f, delimiter=sep, quoting=csv.QUOTE_ALL)
+        writer.writerow(data)
+        if options.verbose is True:
+            pass
+        else:
+            print("\t".join(data))
+
+        time.sleep(options.rate)
+
+for thing in things:
+    thing.close()
