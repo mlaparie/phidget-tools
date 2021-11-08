@@ -1,5 +1,5 @@
 # phidget-tools
-__*Facilitate recording and monitoring of Phidget 1048_1B USB-thermocouple device directly from the comfort of your favourite terminal.*__
+__*Easy recording/monitoring of Phidget 1048_1B USB-thermocouple devices directly from your comfy terminal*__
 
 It aims at providing a fast, flexible and efficient way to record and monitor thermocouple data in situations where a computer (including a tiny and inexpensive one like the Pi Zero) is in reach. This saves the usual hassle of using GUI and/or proprietary software with limited features from commercial providers, having to set recording missions without live feedback, and then unload and view the data only when the experiment is over.
 
