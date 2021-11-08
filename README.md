@@ -12,7 +12,9 @@ In addition to better portability and compatibility with headless machines, usin
 </p>
 
 <p align="center">
+    <a href="https://raw.githubusercontent.com/mlaparie/phidget-tools/main/pics/phidget-plot.mp4"
     <img width="1000" src="https://github.com/mlaparie/phidget-tools/raw/main/pics/phidget-plot.gif">
+    </a>
 </p>
 
 ## Usage
