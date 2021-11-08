@@ -108,7 +108,7 @@ ln -s phidget-plot ~/.local/bin/phidget-plot
   * macOS: `brew install fzf`
 
 ### How to use
-Using both scripts should be straightforward, check `--help`. In short, plug your Phidget device, run `phidget-rec` (try the `--interactive` ot `-i`  option if in doubt) to collect data, and run `phidget-plot` to select and preview previously recorded data or view live plots for ongoing monitorings. Make sure your Phidget has thermocouples connected on all four TC channels (0 to 3) because errors may arise if some channels cannot collect data.
+Using both scripts should be straightforward, check `--help`. In short, plug your Phidget device, run `phidget-rec` (try the `--interactive` ot `-i`  option if in doubt) to collect data, and run `phidget-plot` to select and preview previously recorded data or view live plots for ongoing monitorings. You can run several instances of `phidget-rec` simultaneously if you want to record from multiple Phidget 1048_1B devices.
 
 
 ### Scripting
