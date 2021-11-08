@@ -110,36 +110,60 @@ ln -s phidget-plot ~/.local/bin/phidget-plot
 ### How to use
 Using both scripts should be straightforward, check `--help`. In short, plug your Phidget device, run `phidget-rec` (try the `--interactive` ot `-i`  option if in doubt) to collect data, and run `phidget-plot` to select and preview previously recorded data or view live plots for ongoing monitorings. Make sure your Phidget has thermocouples connected on all four TC channels (0 to 3) because errors may arise if some channels cannot collect data.
 
-While `phidget -i` will prompt the user for all available options (except selecting a Phidget when several are connected, because I could not test it, but adding `-p SERIAL` should work), one advantage for CLI tools is to suppress all interactions to run them from other scripts and tools. Just make sure you provide the compulsory arguments `-n NAME`, `-d DAYS` (though inconvenient, it is a float, so fractions are possible: `-d 0.25` is six hours) and `-y` to skip the final confirmation. `-r RATE` is not mandatory but will obviously be set by most users. The silly example below would collect data for 10 seconds at 0.2s poll rate, then wait 10 seconds before starting a new cycle, and increment file names accordingly.
+While `phidget -i` will prompt the user for all available options (except selecting a Phidget when several are connected, because I could not test it, but adding `-p SERIAL` should work), one advantage for CLI tools is to suppress all interactions to run them from other scripts and tools. Just make sure you provide the compulsory arguments `-n NAME`, `-d DAYS` (though inconvenient, it is a float, so fractions are possible: `-d 0.25` is six hours) and `-y` to skip the final confirmation. `-r RATE` is not mandatory but will obviously be set by most users.
 
+The 'cycle-rec.sh' example below would allow cycling the execution of `phidget-rec` for `N` phases (first argument), each separated by `WAIT` days. These two arguments have to be given first and in that order, and followed by at least the compulsory arguments for `phidget-rec` (in any order) to suppress all input prompts. 
+
+#!/usr/bin/env bash
 ```bash
 #!/usr/bin/env bash
+# This script should be given 2 arguments: number of phases, wait time (in days) between phases.
+# Both arguments should be separated by a space, and then followed by phidget-rec options
+# example: sh cycle-rec.sh 6 0.0001157407 -nDoe -r0.2 -yd0.0001157407
+
 TMPFILE="$(mktemp)"
+PHASE=0
+N="$1"
+DELAY="$(echo $(bc <<< "$2 * 86400 + 0.5")/1 | bc)"
+
+printf "\033[33;1mInitiated a cycle of "$N" phases each separated by "$2" days…\033[0m\n"
 echo 0 > $TMPFILE
-	while true
+		shift 2
+	while [ "$PHASE" -lt "$N" ]
 	do
-		INCREMENT=$[$(cat $TMPFILE) + 1]
-		sleep 10 && phidget-rec -nDoe -yd0.0001157407 -r0.2 -lphase"$INCREMENT"
-		echo $INCREMENT > $TMPFILE
+		PHASE=$[$(cat $TMPFILE) + 1]
+		phidget-rec "$@" -lphase"$PHASE""of""$N" 1>/dev/null # Remove "1>/dev/null" if you want to see phidget-rec output
+		printf "\033[33;1mPhase "$PHASE"/"$N" completed.\033[0m\n"
+		echo $PHASE > $TMPFILE
+		sleep "$DELAY"
 	done
 ```
 
 ```txt
+$ sh cycle-rec.sh 6 0.0001157407 -nDoe -r0.2 -yd0.0001157407
+Initiated a cycle of 6 phases each separated by 0.0001157407 days…
+Phase 1/6 over.
+Phase 2/6 over.
+Phase 3/6 over.
+Phase 4/6 over.
+Phase 5/6 over.
+Phase 6/6 over.
+
 $ tree Data/
 Data/
 └── Doe
-    ├── Doe_phase1_r0.2_D0.0d_20211108-024307.csv
-    ├── Doe_phase2_r0.2_D0.0d_20211108-024327.csv
-    ├── Doe_phase3_r0.2_D0.0d_20211108-024348.csv
-    ├── Doe_phase4_r0.2_D0.0d_20211108-024408.csv
-    ├── Doe_phase5_r0.2_D0.0d_20211108-024428.csv
-    └── Doe_phase6_r0.2_D0.0d_20211108-024449.csv
+    ├── Doe_phase1of6_r0.2_D0.0d_20211108-133540.csv
+    ├── Doe_phase2of6_r0.2_D0.0d_20211108-133600.csv
+    ├── Doe_phase3of6_r0.2_D0.0d_20211108-133620.csv
+    ├── Doe_phase4of6_r0.2_D0.0d_20211108-133641.csv
+    ├── Doe_phase5of6_r0.2_D0.0d_20211108-133701.csv
+    └── Doe_phase6of6_r0.2_D0.0d_20211108-133722.csv
 
 1 directory, 6 files
 ```
 
-This simple script does stupidly short cycles for test purposes, no one would need this, but similar routines could get useful over longer durations if you are only interested in night temperatures for instance.
+This example does stupidly short cycles for test purposes, but similar routines could get useful over longer durations. *e.g.*, if you are only interested in night temperatures.
 
-## To-do
+## To do
 - Add a safety in `phidget-rec` to prevent overwriting an existing csv file
 - Investigate implementing upcoming `jp` update and associated new features
