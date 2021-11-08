@@ -114,7 +114,7 @@ Using both scripts should be straightforward, check `--help`. In short, plug you
 ### Scripting
 While `phidget -i` will prompt the user for all available options (except selecting a Phidget when several are connected, because I could not test it, but adding `-p SERIAL` should work), one advantage for CLI tools is to suppress all interactions to run them from other scripts and tools. Just make sure you provide the compulsory arguments `-n NAME`, `-d DAYS` (though inconvenient, it is a float, so fractions are possible: `-d 0.25` is six hours) and `-y` to skip the final confirmation. `-r RATE` is not mandatory but will obviously be set by most users.
 
-The example Bash script below cycles the execution of `phidget-rec` for `N` recording phases (first argument), each separated by `WAIT` days. These two arguments have to be given first and in that order, and followed by at least the compulsory arguments for `phidget-rec` (in any order) to suppress all input prompts and fully automate the whole routine. More complex scheduling could be achieved using `crontab` for instance.
+The example Bash script below cycles the execution of `phidget-rec` for `ARG1` recording phases (first argument), each separated by `ARG2` days. These two arguments have to be given first and in that order, and followed by at least the options for `phidget-rec` described above (in any order) to suppress all input prompts and fully automate the routine. More complex scheduling could be achieved using `crontab` for instance.
 
 ```bash
 #!/usr/bin/env bash
