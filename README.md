@@ -136,7 +136,7 @@ Data/
 1 directory, 6 files
 ```
 
-This simple script is short for test purposes, no one would need this cycle, but such things could get useful over hours if you are only interested in night temperatures for instance.
+This simple script does stupidly short cycles for test purposes, no one would need this cycle, but such routines could get useful over longer cycles if you are only interested in night temperatures for instance.
 
 ## To-do
 - Add a safety in `phidget-rec` to prevent overwriting an existing csv file
