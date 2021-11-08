@@ -112,7 +112,7 @@ Using both scripts should be straightforward, check `--help`. In short, plug you
 
 
 ### Scripting
-While `phidget -i` will prompt the user for all available options (except selecting a Phidget when several are connected, because I could not test it, but adding `-p SERIAL` should work), one advantage for CLI tools is to suppress all interactions to run them from other scripts and tools. Just make sure you provide the compulsory arguments `-n NAME`, `-d DAYS` (though inconvenient, it is a float, so fractions are possible: `-d 0.25` is six hours) and `-y` to skip the final confirmation. `-r RATE` is not mandatory but will obviously be set by most users.
+While `phidget -i` will prompt the user for all available options one advantage for CLI tools is to suppress all interactions to run them from other scripts and tools. Just make sure you provide the compulsory arguments `-p SERIAL`, `-n NAME`, `-d DAYS` (though inconvenient, it is a float, so fractions are possible: `-d 0.25` is six hours) and `-y` to skip the final confirmation. `-r RATE` is not mandatory but will obviously be set by most users.
 
 The example Bash script below cycles the execution of `phidget-rec` for `ARG1` recording phases (first argument), each separated by `ARG2` days. These two arguments have to be given first and in that order, and followed by at least the options for `phidget-rec` described above (in any order) to suppress all input prompts and fully automate the routine. More complex scheduling could be achieved using `crontab` for instance.
 
@@ -146,7 +146,7 @@ tree Data -tU | head -n "$lastmod"
 ```
 
 ```bash
-sh cycle-rec.sh 6 0.0006944444 -nDoe -r0.2 -yd0.0001157407
+sh cycle-rec.sh 6 0.0006944444 -nDoe -r0.2 -yd0.0001157407 -p647540
 Initiated a cycle of 6 recording phases each separated by 0.0006944444 days…
 Recording 1/6 completed.
 Recording 2/6 completed.

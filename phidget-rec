@@ -136,7 +136,7 @@ parser.add_option(
 )
 (options, args) = parser.parse_args()
 
-# Check device connection
+# Check device connection and allow selecting another one
 device = TemperatureSensor()
 try:
     if options.phidget is not None:
@@ -144,16 +144,23 @@ try:
         device.setDeviceSerialNumber(options.phidget)
         device.openWaitForAttachment(5000)
         serialnumber = device.getDeviceSerialNumber()
+        print("Phidget S/N " + str(serialnumber) + " found.")
     else:
         print("Looking for compatible devices… ")
         device.openWaitForAttachment(5000)
         serialnumber = device.getDeviceSerialNumber()
-    print(f"\033[32;1m✔\033[0m Phidget S/N " + format(serialnumber) + " detected.\n")
+        options.phidget = int(input("Phidget S/N " + format(serialnumber) + " found. Confirm with Enter or type another serial number: ")
+            or serialnumber)
+        if options.phidget != serialnumber:
+            device.close()
+            device.setDeviceSerialNumber(options.phidget)
+            device.openWaitForAttachment(5000)
+            serialnumber = device.getDeviceSerialNumber()
+            print("Phidget S/N " + str(serialnumber) + " found.")
+    print("\033[32;1m✔\033[0m Using Phidget S/N " + format(serialnumber) + ".\n")
 except Exception as e:
     sys.exit(
-        "\033[31;1m✗\033[0m Phidget not detected, check USB connection or queried serial number."
-    )
-device.close()
+        "\033[31;1m✗\033[0m Phidget not found or already busy, check USB connection or queried serial number.")
 
 # Interactive prompts
 init_full = datetime.now()
@@ -449,6 +456,7 @@ with open(full_path, "w", encoding="UTF8", newline="") as f:
         print("                      " + "\t  ".join(headers))
 
     for channel in channels:
+        device.close()
         thing = TemperatureSensor()
         thing.setDeviceSerialNumber(serialnumber)
         thing.setChannel(channel)
