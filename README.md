@@ -114,27 +114,27 @@ While `phidget -i` will prompt the user for all available options (except select
 
 The 'cycle-rec.sh' example below would allow cycling the execution of `phidget-rec` for `N` phases (first argument), each separated by `WAIT` days. These two arguments have to be given first and in that order, and followed by at least the compulsory arguments for `phidget-rec` (in any order) to suppress all input prompts. 
 
-#!/usr/bin/env bash
 ```bash
 #!/usr/bin/env bash
 # This script should be given 2 arguments: number of phases, wait time (in days) between phases.
 # Both arguments should be separated by a space, and then followed by phidget-rec options
 # example: sh cycle-rec.sh 6 0.0001157407 -nDoe -r0.2 -yd0.0001157407
+# Note that the script overrides the --label argument of phidget-rec to name file after their cycle number
 
 TMPFILE="$(mktemp)"
-PHASE=0
+CYCLE=0
 N="$1"
 DELAY="$(echo $(bc <<< "$2 * 86400 + 0.5")/1 | bc)"
 
 printf "\033[33;1mInitiated a cycle of "$N" phases each separated by "$2" days…\033[0m\n"
 echo 0 > $TMPFILE
 		shift 2
-	while [ "$PHASE" -lt "$N" ]
+	while [ "$CYCLE" -lt "$N" ]
 	do
-		PHASE=$[$(cat $TMPFILE) + 1]
-		phidget-rec "$@" -lphase"$PHASE""of""$N" 1>/dev/null # Remove "1>/dev/null" if you want to see phidget-rec output
-		printf "\033[33;1mPhase "$PHASE"/"$N" completed.\033[0m\n"
-		echo $PHASE > $TMPFILE
+		CYCLE=$[$(cat $TMPFILE) + 1]
+		phidget-rec "$@" -l"$CYCLE""of""$N" 1>/dev/null # Remove "1>/dev/null" if you want to see phidget-rec output
+		printf "\033[33;1m"$CYCLE"/"$N" completed.\033[0m\n"
+		echo $CYCLE > $TMPFILE
 		sleep "$DELAY"
 	done
 ```
@@ -152,12 +152,12 @@ Phase 6/6 over.
 $ tree Data/
 Data/
 └── Doe
-    ├── Doe_phase1of6_r0.2_D0.0d_20211108-133540.csv
-    ├── Doe_phase2of6_r0.2_D0.0d_20211108-133600.csv
-    ├── Doe_phase3of6_r0.2_D0.0d_20211108-133620.csv
-    ├── Doe_phase4of6_r0.2_D0.0d_20211108-133641.csv
-    ├── Doe_phase5of6_r0.2_D0.0d_20211108-133701.csv
-    └── Doe_phase6of6_r0.2_D0.0d_20211108-133722.csv
+    ├── Doe_1of6_r0.2_D0.0d_20211108-133540.csv
+    ├── Doe_2of6_r0.2_D0.0d_20211108-133600.csv
+    ├── Doe_3of6_r0.2_D0.0d_20211108-133620.csv
+    ├── Doe_4of6_r0.2_D0.0d_20211108-133641.csv
+    ├── Doe_5of6_r0.2_D0.0d_20211108-133701.csv
+    └── Doe_6of6_r0.2_D0.0d_20211108-133722.csv
 
 1 directory, 6 files
 
@@ -166,7 +166,7 @@ $ head Data/Doe/Doe_phase1of6_r0.2_D0.0d_20211108-133540.csv -n 14
 "Phidget: 647540"
 "Name: Doe"
 "Tag(s) or info: NA"
-"Label: phase1of6"
+"Label: 1of6"
 "Poll rate: 0.2s"
 "Program initialization: 2021-11-08 13:35:40"
 "Scheduled to record until: 2021-11-08 13:35:49.999996"
