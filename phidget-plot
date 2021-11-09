@@ -1,0 +1,217 @@
+#!/usr/bin/env bash
+# Plot previews for Phidget csv files
+# Dependencies: jp (https://github.com/sgreben/jp), fzf (https://github.com/junegunn/fzf)
+
+# phidget-rec and phidget-plot aim to facilitate recording and monitoring
+# of data from Phidget 1048_1B USB-thermocouple devices directly from your
+# comfy terminal.
+# 
+# Copyright (C) 2021 Mathieu Laparie
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+# Dependency check
+SCRIPTDIR="$(dirname "$(readlink -f "$0")")"
+ARCH="$(arch)"
+
+if [ -n "$(command -v jp)" ]; then # Use jp from $PATH if akready installed
+    JPBINARY=$(which jp)
+elif [ -x "${SCRIPTDIR}"/jp_"${ARCH}" ] && [ ! -x "${SCRIPTDIR}"/jp ]; then # Else, use prebuilt binaries
+        ln -s "${SCRIPTDIR}"/jp_"${ARCH}" "${SCRIPTDIR}"/jp && chmod +x "${SCRIPTDIR}"/jp
+        JPBINARY="${SCRIPTDIR}"/jp
+elif [ -x "${SCRIPTDIR}"/jp ]; then
+        JPBINARY="${SCRIPTDIR}"/jp
+elif [ ! -x "${SCRIPTDIR}"/jp ] && [ ! -x "${SCRIPTDIR}"/jp_"${ARCH}" ]; then
+        printf 'Missing dependency: jp.
+        Install the latest version with Go, or download a prebuilt binary for your architecture from
+        https://github.com/sgreben/jp. Move it to your PATH or to %s and make it executable.\n' "${SCRIPTDIR}" && exit 0
+fi
+
+# Utility commands
+_pht() {
+    >&2 printf '%s\n' "$1"
+}
+
+_pemx() {
+    >&2 printf '\033[31;1mError:\033[m %s\n' "$1"
+    exit 1
+}
+
+# Function to convert tab-separated and space-separated into comma-separated (required for jp)
+commas() {
+    tr '\t' ',' | tr '" "' '","'
+}
+
+# Help message
+show-help() {
+    _pht "$(basename "$0") (live) plots csv data from phidget-rec directly in the terminal."
+    _pht
+    _pht "Usage: $ $(basename "$0") [FILE] [CHANNEL(S)]"
+    _pht ""       
+    _pht "       [FILE]        path to input csv file"
+    _pht "       [CHANNEL(S)]  space-separated list of channel(s) from 0 to 4 to plot, e.g., 0 1 2 3 4"
+    _pht
+    _pht "       Arguments are facultative, suppling none enables interactive mode (requires fzf)."
+    _pht "       Interactive mode looks for input csv files in present directory and takes no [CHANNEL] argument."
+    _pht
+    _pht "       Refresh rate of live plots defaults to 0.5s but can be overriden with"
+    _pht "       an environment variable: 'phidgetplotrate=60 $(basename "$0") [ARGS]'"
+    _pht
+    _pht "phidget-plot comes with no warranty. This is free software, you are welcome to redistribute it under"
+    _pht "GPLv3 conditions. Copyright (C) M. Laparie. Improve me at https://github.com/mlaparie/phidget-tools"
+}
+
+# Core functions
+live() {
+    export -f commas
+    IFS=" " read -r -a chans <<< "$(echo "$@" | xargs)"
+    IFS=" " read -r -a allchans <<< "$(seq 1 1 5 | xargs)"
+    rrate="${phidgetplotrate:-0.5}"
+    unset 'chans[0]'
+    if [ "${#chans[@]}" -eq "0" ] && [ "${#csv[@]}" -ge 1 ] ; then
+        while true; do
+            output="$(for i in "${csv[@]}"
+                          do printf '\033[31;1m\n—— %s ——\033[m\n' "$i"
+                             for j in "${allchans[@]}"
+                                 do k=$((j-1))
+                                 printf '\033[33;1m\n⌜ Channel %s ⌟\033[m\n' "$k"
+                                 tail -n +11 "$i" | commas | ${JPBINARY} -input csv -type scatter -xy "[*][0,$j]" \
+                                   -height $(($(tput lines) / ("${#allchans[@]}") - 4)) -width $(($(tput cols) - 3))
+                              done
+                      done)"
+            clear
+            printf '%s\nPress ^C to close live plot.' "$output"
+            sleep "$rrate"
+        done
+        elif [ "${#chans[@]}" -eq "0" ] && [ "${#csv[@]}" -eq 0 ] ; then
+            while true; do
+                output="$(printf '\033[31;1m\n—— %s ——\033[m\n' "$1"
+                        for j in "${allchans[@]}"
+                            do k=$((j-1))
+                            printf '\033[33;1m\n⌜ Channel %s ⌟\033[m\n' "$k"
+                            tail -n +11 "$1" | commas | ${JPBINARY} -input csv -type scatter -xy "[*][0,$j]" \
+                              -height $(($(tput lines) / ("${#allchans[@]}") - 4)) -width $(($(tput cols) - 3))
+                         done)"
+                clear
+                printf '%s\nPress ^C to close live plot.' "$output"
+                sleep "$rrate"
+            done
+        else
+        while true; do
+            output="$(printf '\033[31;1m\n—— %s ——\033[m\n' "$1" ;
+                for i in "${chans[@]}"
+                    do j=$((i+1)) ;
+                    printf '\033[33;1m\n⌜ Channel %s ⌟\033[m\n' "$i"
+                    tail -n +11 "$1" | commas | ${JPBINARY} -input csv -type scatter -xy "[*][0,$j]" \
+                      -height $(($(tput lines) / ("${#chans[@]}") - 4)) -width $(($(tput cols) - 3))
+                done)"
+                clear
+            printf '%s\nPress ^C to close live plot.' "$output"
+                sleep "$rrate"
+        done
+    fi
+    
+}
+
+interactive() {
+    export -f commas
+    if [ -z "$(command -v fzf)" ]; then
+        printf 'Interactive mode requires fzf, install it or supply input csv file from command line.\n' && exit 0
+    else
+        TMPFILE=$(mktemp)
+        IFS=" " read -r -a csv <<< "$( (find . -maxdepth 5 -name '*.csv' 2>/dev/null) | (fzf --preview 'cat {}' \
+        --preview-window='right:55%' \
+        --layout=reverse \
+        --height=100% \
+        --cycle \
+        --multi \
+        --marker='*' \
+        --header=$'[Pick input file(s) to plot]\n    Tab    multi-selection
+    Ent    plot channels 0-4 from selected file(s) (live if recording ongoing)
+    Esc    exit
+
+Static plot previews for hovered file:
+    alt-0  channel 0
+    alt-1  channel 1
+    alt-2  channel 2
+    alt-3  channel 3
+    alt-4  channel 4
+    alt-a  all channels
+    alt-c  cancel plot preview
+    ' \
+        --bind="alt-0:preview(
+            (tail -n +11 {} | commas | ${JPBINARY} -input csv -type scatter -xy '[*][0,1]' \
+               -height $(($(tput lines) - 10)) -width $(($(tput cols) / 2)) | less -SN)
+                )" \
+        --bind="alt-1:preview(
+            (tail -n +11 {} | commas | ${JPBINARY} -input csv -type scatter -xy '[*][0,2]' \
+               -height $(($(tput lines) - 10)) -width $(($(tput cols) / 2)) | less -SN)
+                )" \
+        --bind="alt-2:preview(
+            (tail -n +11 {} | commas | ${JPBINARY} -input csv -type scatter -xy '[*][0,3]' \
+               -height $(($(tput lines) - 10)) -width $(($(tput cols) / 2)) | less -SN)
+                )" \
+        --bind="alt-3:preview(
+            (tail -n +11 {} | commas | ${JPBINARY} -input csv -type scatter -xy '[*][0,4]' \
+               -height $(($(tput lines) - 10)) -width $(($(tput cols) / 2)) | less -SN)
+                )" \
+        --bind="alt-4:preview(
+            (tail -n +11 {} | commas | ${JPBINARY} -input csv -type scatter -xy '[*][0,5]' \
+               -height $(($(tput lines) - 10)) -width $(($(tput cols) / 2)) | less -SN)
+                )" \
+        --bind="alt-a:preview(
+            (tail -n +11 {} | commas | ${JPBINARY} -input csv -type scatter -xy '[*][0,1]' \
+               -height $(($(tput lines) / 5 - 1)) -width $(($(tput cols) / 2)) > ${TMPFILE}; \
+             tail -n +11 {} | commas | ${JPBINARY} -input csv -type scatter -xy '[*][0,2]' \
+               -height $(($(tput lines) / 5 - 1)) -width $(($(tput cols) / 2)) >> ${TMPFILE}; \
+             tail -n +11 {} | commas | ${JPBINARY} -input csv -type scatter -xy '[*][0,3]' \
+               -height $(($(tput lines) / 5 - 1)) -width $(($(tput cols) / 2)) >> ${TMPFILE}; \
+             tail -n +11 {} | commas | ${JPBINARY} -input csv -type scatter -xy '[*][0,4]' \
+               -height $(($(tput lines) / 5 - 1)) -width $(($(tput cols) / 2)) >> ${TMPFILE}; \
+             tail -n +11 {} | commas | ${JPBINARY} -input csv -type scatter -xy '[*][0,5]' \
+               -height $(($(tput lines) / 5 - 1)) -width $(($(tput cols) / 2)) >> ${TMPFILE}; \
+             less -SN ${TMPFILE}; \
+             rm ${TMPFILE})
+               )" \
+         --bind="alt-c:preview(cat {})"
+               ) )"
+
+        for i in "${csv[@]}"
+            do live
+        done
+        exit 0
+    fi
+}
+
+# Handle arguments: go in interactive mode if no file and channel is supplied, try to cover all scenarios
+IFS=" " read -r -a args <<< "$(echo "$@" | xargs)"
+IFS=" " read -r -a chans <<< "$(echo "$@" | xargs)"
+unset 'chans[0]'
+IFS=" " read -r -a chans <<< "$(printf '%s\n' "${chans[@]//[[:alpha:]]/}" | xargs)"
+
+if [ "${#args[@]}" -eq "0" ]; then
+    interactive
+elif [ "${#args[@]}" -eq "1" ]; then
+    case "$1" in
+            "-h"|"--help")
+                show-help ; exit 0 ;;
+            -*)
+                _pemx "option not supported." ; exit 0 ;;
+             *)
+                live "$1" || _pemx 'Error: does %s exist?' "$1" ; exit 0 ;;
+    esac
+elif [ "${#chans[@]}" -ge "1" ]; then
+    chans=( "${args[0]}" "${chans[@]}" )
+    live "${chans[@]}"
+fi
