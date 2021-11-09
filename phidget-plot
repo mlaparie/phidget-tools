@@ -34,9 +34,8 @@ elif [ -x "${SCRIPTDIR}"/jp ]; then
         JPBINARY="${SCRIPTDIR}"/jp
 elif [ ! -x "${SCRIPTDIR}"/jp ] && [ ! -x "${SCRIPTDIR}"/jp_"${ARCH}" ]; then
         printf 'Missing dependency: jp.
-        Prebuilt binaries are supplied with this repository, make sure you cloned the full repository
-        or downloaded the prebuilt binaries to %s and kept them executable.
-        Alternatively, install latest jp from https://github.com/sgreben/jp\n' "${SCRIPTDIR}" && exit 0
+        Install the latest version with Go, or download a prebuilt binary for your architecture from
+        https://github.com/sgreben/jp. Move it to your PATH or to %s and make it executable.\n' "${SCRIPTDIR}" && exit 0
 fi
 
 # Utility commands
@@ -132,7 +131,7 @@ interactive() {
     else
         TMPFILE=$(mktemp)
         IFS=" " read -r -a csv <<< "$( (find . -maxdepth 5 -name '*.csv' 2>/dev/null) | (fzf --preview 'cat {}' \
-        --preview-window=right,55% \
+        --preview-window='right:55%' \
         --layout=reverse \
         --height=100% \
         --cycle \
