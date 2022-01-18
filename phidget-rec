@@ -35,7 +35,7 @@ import socket
 # Help and options
 parser = OptionParser(
     usage="usage: $ %prog [options]",
-    description="A program to facilitate recording and monitoring of data from Phidget 1048_1B USB-thermocouple devices directly from your comfy terminal",
+    description="A program to record and monitor thermocouple data with Phidget 1048_1B USB devices directly from a comfy the terminal",
     epilog="phidget-rec comes with no warranty. This is free software, you are welcome to redistribute it under GPLv3 conditions. Copyright (C) 2021 M. Laparie. Improve me at https://github.com/mlaparie/phidget-tools",
 )
 parser.add_option(
