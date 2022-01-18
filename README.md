@@ -25,7 +25,7 @@ $ phidget-rec -h
 Usage: $ phidget-rec [options]
 
 A program to record and monitor thermocouple data with Phidget 1048_1B
-USB devices directly from a comfy the terminal
+USB devices directly from the terminal
 
 Options:
   -h, --help            show this help message and exit
