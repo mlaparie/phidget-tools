@@ -93,14 +93,13 @@ ln -s phidget-plot ~/.local/bin/phidget-plot
 
 ### Dependencies
 #### `phidget-rec`
-- `python3`
 - Phidget libraries: follow "[Part 1](https://www.phidgets.com/?tier=3&catid=14&pcid=12&prodid=120R0)" instructions from the official website:
   * Install dependencies from your package manager, *e.g.*:
 
-  	`sudo apt install wget gcc make libusb-1.0-0-dev` (Debian)
+  	`sudo apt install wget gcc make libusb-1.0-0-dev` (Debian)  
   	`sudo eopkg it wget gcc make libsusb-devel` (Solus)
 
-  * Donwload, unpack and install the Phidget library:
+  * Download, unpack and install the Phidget library:
 
   	```bash
   	wget https://www.phidgets.com/downloads/phidget22/libraries/linux/libphidget22.tar.gz -O /tmp/libphidget22.tar.gz
@@ -111,7 +110,8 @@ ln -s phidget-plot ~/.local/bin/phidget-plot
 	sudo make install
 	```
 
-  * A backup version of `libphidget22.tar.gz` is provided in this repository in case the original source becomes obsolete in the future.
+  * A backup version of `libphidget22.tar.gz` is provided in the `libs/` folder of this repository in case the original source becomes unavalable in the future.
+- `python3`
 - `Phidget22` Python library: `pip3 install Phidget22`
 
 #### `phidget-plot`
